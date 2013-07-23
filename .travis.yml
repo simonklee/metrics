@@ -4,5 +4,7 @@ go: 1.1
 script:
   - go test -v
 
+install: make get-deps
+
 services:
   - redis-server
