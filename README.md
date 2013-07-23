@@ -1,3 +1,3 @@
-[![Build Status](https://travis-ci.org/simonz05/bitmap.png?branch=master)](https://travis-ci.org/simonz05/bitmap)
-# bitmap — analytics library for redis
+# metrics — analytics library for redis
+[![Build Status](https://travis-ci.org/simonz05/metrics.png?branch=master)](https://travis-ci.org/simonz05/metrics)
 
