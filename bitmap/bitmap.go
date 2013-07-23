@@ -243,7 +243,7 @@ func bitOp(op string, numerals []Numeral) Numeral {
 		ikeys[i] = numerals[i-2].Key()
 	}
 
-	key := fmt.Sprintf("trackist_bitop_%s_%s", op, strings.Join(keys, "-"))
+	key := fmt.Sprintf("bitmap_bitop_%s_%s", op, strings.Join(keys, "-"))
 	ev := &event{key, numerals[0].Client()}
 	ikeys[0] = op
 	ikeys[1] = key
