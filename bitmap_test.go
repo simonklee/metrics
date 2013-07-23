@@ -28,7 +28,8 @@ type DayTest struct {
 }
 
 func TestWithDifferentDays(t *testing.T) {
-	c := NewClient()
+	c := NewClient("")
+
 	if err := c.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
 	}
@@ -59,7 +60,7 @@ func TestWithDifferentDays(t *testing.T) {
 }
 
 func TestCounts(t *testing.T) {
-	c := NewClient()
+	c := NewClient("")
 	if err := c.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
 	}
@@ -79,7 +80,7 @@ func TestCounts(t *testing.T) {
 }
 
 func TestDifferentDates(t *testing.T) {
-	c := NewClient()
+	c := NewClient("")
 
 	if err := c.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
@@ -106,7 +107,7 @@ func TestDifferentDates(t *testing.T) {
 }
 
 func TestDifferentBuckets(t *testing.T) {
-	c := NewClient()
+	c := NewClient("")
 	if err := c.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
 	}
@@ -126,7 +127,7 @@ func TestDifferentBuckets(t *testing.T) {
 }
 
 func TestExists(t *testing.T) {
-	c := NewClient()
+	c := NewClient("")
 
 	if err := c.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
@@ -163,7 +164,7 @@ type OpTest struct {
 }
 
 func TestOp(t *testing.T) {
-	c := NewClient()
+	c := NewClient("")
 	if err := c.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
 	}
