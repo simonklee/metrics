@@ -8,7 +8,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
-var RedisPool = redis.Pool{
+var defaultRedisPool = redis.Pool{
 	MaxIdle:     128,
 	IdleTimeout: 60 * time.Second,
 	Dial: func() (redis.Conn, error) {
@@ -23,16 +23,24 @@ var RedisPool = redis.Pool{
 	TestOnBorrow: nil,
 }
 
-func TrackAtTime(name string, id int, t time.Time) error {
+type Client struct{
+	pool redis.Pool
+}
+
+func NewClient() *Client{
+	return &Client{ defaultRedisPool}
+}
+
+func (c* Client) TrackAtTime(name string, id int, t time.Time) error {
 	tt := timetuple(t)
 	events := []Numeral{
-		MonthEvent(name, tt[0], tt[1]),
-		WeekEvent(name, tt[0], tt[4]),
-		DayEvent(name, tt[0], tt[1], tt[2]),
-		HourEvent(name, tt[0], tt[1], tt[2], tt[3]),
+		c.MonthEvent(name, tt[0], tt[1]),
+		c.WeekEvent(name, tt[0], tt[4]),
+		c.DayEvent(name, tt[0], tt[1], tt[2]),
+		c.HourEvent(name, tt[0], tt[1], tt[2], tt[3]),
 	}
 
-	conn := RedisPool.Get()
+	conn := c.pool.Get()
 	defer conn.Close()
 
 	conn.Send("MULTI")
@@ -45,12 +53,12 @@ func TrackAtTime(name string, id int, t time.Time) error {
 	return err
 }
 
-func Track(name string, id int) error {
-	return TrackAtTime(name, id, time.Now().UTC())
+func (c* Client) Track(name string, id int) error {
+	return c.TrackAtTime(name, id, time.Now().UTC())
 }
 
-func DeleteAllEvents() error {
-	conn := RedisPool.Get()
+func (c* Client) DeleteAllEvents() error {
+	conn := c.pool.Get()
 	defer conn.Close()
 
 	res, err := redis.Values(conn.Do("KEYS", "tracklist:*"))
@@ -67,20 +75,58 @@ func DeleteAllEvents() error {
 	return nil
 }
 
+func (c* Client) MonthEvent(name string, year, month int) Numeral {
+	return &event{fmt.Sprintf("tracklist:%s:%d-%d", name, year, month), c}
+}
+
+func (c* Client) MonthEventAtTime(name string, t time.Time) Numeral {
+	tt := timetuple(t)
+	return &event{fmt.Sprintf("tracklist:%s:%d-%d", name, tt[0], tt[1]), c}
+}
+
+func (c* Client) WeekEvent(name string, year, week int) Numeral {
+	return &event{fmt.Sprintf("tracklist:%s:W%d-%d", name, year, week), c}
+}
+
+func (c* Client) WeekEventAtTime(name string, t time.Time) Numeral {
+	tt := timetuple(t)
+	return &event{fmt.Sprintf("tracklist:%s:W%d-%d", name, tt[0], tt[4]), c}
+}
+
+func (c* Client) DayEvent(name string, year, month, day int) Numeral {
+	return &event{fmt.Sprintf("tracklist:%s:%d-%d-%d", name, year, month, day), c}
+}
+
+func (c* Client) DayEventAtTime(name string, t time.Time) Numeral {
+	tt := timetuple(t)
+	return &event{fmt.Sprintf("tracklist:%s:%d-%d-%d", name, tt[0], tt[1], tt[2]), c}
+}
+
+func (c* Client) HourEvent(name string, year, month, day, hour int) Numeral {
+	return &event{fmt.Sprintf("tracklist:%s:%d-%d-%d-%d", name, year, month, day, hour), c}
+}
+
+func (c* Client) HourEventAtTime(name string, t time.Time) Numeral {
+	tt := timetuple(t)
+	return &event{fmt.Sprintf("tracklist:%s:%d-%d-%d-%d", name, tt[0], tt[1], tt[2], tt[3]), c}
+}
+
 type Numeral interface {
 	Count() (int64, error)
 	Contains(int) (bool, error)
 	Delete() error
 	Exists() (bool, error)
 	Key() string
+	Client() *Client
 }
 
 type event struct {
 	key string
+	client*	Client
 }
 
 func (ev *event) Delete() error {
-	conn := RedisPool.Get()
+	conn := ev.client.pool.Get()
 	defer conn.Close()
 
 	_, err := conn.Do("DEL", ev.Key())
@@ -88,21 +134,21 @@ func (ev *event) Delete() error {
 }
 
 func (ev *event) Count() (int64, error) {
-	conn := RedisPool.Get()
+	conn := ev.client.pool.Get()
 	defer conn.Close()
 
 	return redis.Int64(conn.Do("BITCOUNT", ev.Key()))
 }
 
 func (ev *event) Contains(id int) (bool, error) {
-	conn := RedisPool.Get()
+	conn := ev.client.pool.Get()
 	defer conn.Close()
 
 	return redis.Bool(conn.Do("GETBIT", ev.Key(), id))
 }
 
 func (ev *event) Exists() (bool, error) {
-	conn := RedisPool.Get()
+	conn := ev.client.pool.Get()
 	defer conn.Close()
 
 	return redis.Bool(conn.Do("EXISTS", ev.Key()))
@@ -112,12 +158,21 @@ func (ev *event) Key() string {
 	return ev.key
 }
 
+func (ev *event) Client() *Client {
+	return ev.client
+}
+
 func (ev *event) String() string {
 	return fmt.Sprintf("event(%s)", ev.key)
 }
 
-func BitOp(op string, numerals []Numeral) Numeral {
+func bitOp(op string, numerals []Numeral) Numeral {
 	n := len(numerals)
+
+	if (n < 1) {
+		panic("bit op on less than one numeral")
+	}
+
 	keys := make([]string, n, n)
 	ikeys := make([]interface{}, n+2, n+2)
 
@@ -130,11 +185,11 @@ func BitOp(op string, numerals []Numeral) Numeral {
 	}
 
 	key := fmt.Sprintf("trackist_bitop_%s_%s", op, strings.Join(keys, "-"))
-	ev := &event{key}
+	ev := &event{key, numerals[0].Client()}
 	ikeys[0] = op
 	ikeys[1] = key
 
-	conn := RedisPool.Get()
+	conn := ev.client.pool.Get()
 	defer conn.Close()
 
 	conn.Do("BITOP", ikeys...)
@@ -142,55 +197,19 @@ func BitOp(op string, numerals []Numeral) Numeral {
 }
 
 func AND(numerals ...Numeral) Numeral {
-	return BitOp("AND", numerals)
+	return bitOp("AND", numerals)
 }
 
 func OR(numerals ...Numeral) Numeral {
-	return BitOp("OR", numerals)
+	return bitOp("OR", numerals)
 }
 
 func XOR(numerals ...Numeral) Numeral {
-	return BitOp("XOR", numerals)
+	return bitOp("XOR", numerals)
 }
 
 func NOT(numerals ...Numeral) Numeral {
-	return BitOp("NOT", numerals)
-}
-
-func MonthEvent(name string, year, month int) Numeral {
-	return &event{fmt.Sprintf("tracklist:%s:%d-%d", name, year, month)}
-}
-
-func MonthEventAtTime(name string, t time.Time) Numeral {
-	tt := timetuple(t)
-	return &event{fmt.Sprintf("tracklist:%s:%d-%d", name, tt[0], tt[1])}
-}
-
-func WeekEvent(name string, year, week int) Numeral {
-	return &event{fmt.Sprintf("tracklist:%s:W%d-%d", name, year, week)}
-}
-
-func WeekEventAtTime(name string, t time.Time) Numeral {
-	tt := timetuple(t)
-	return &event{fmt.Sprintf("tracklist:%s:W%d-%d", name, tt[0], tt[4])}
-}
-
-func DayEvent(name string, year, month, day int) Numeral {
-	return &event{fmt.Sprintf("tracklist:%s:%d-%d-%d", name, year, month, day)}
-}
-
-func DayEventAtTime(name string, t time.Time) Numeral {
-	tt := timetuple(t)
-	return &event{fmt.Sprintf("tracklist:%s:%d-%d-%d", name, tt[0], tt[1], tt[2])}
-}
-
-func HourEvent(name string, year, month, day, hour int) Numeral {
-	return &event{fmt.Sprintf("tracklist:%s:%d-%d-%d-%d", name, year, month, day, hour)}
-}
-
-func HourEventAtTime(name string, t time.Time) Numeral {
-	tt := timetuple(t)
-	return &event{fmt.Sprintf("tracklist:%s:%d-%d-%d-%d", name, tt[0], tt[1], tt[2], tt[3])}
+	return bitOp("NOT", numerals)
 }
 
 func timetuple(t time.Time) [5]int {
