@@ -22,7 +22,7 @@ func newTime(now time.Time) *Time {
 }
 
 type DayTest struct {
-	ev *Event
+	ev Numeral
 	id int
 	ok bool
 }
