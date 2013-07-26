@@ -5,18 +5,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-
-	"github.com/gorilla/mux"
+	"github.com/simonz05/metrics/bitmap"
 )
 
-var Version = "0.0.1"
+var (
+	Version = "0.0.1"
+	metrics *Metrics
+)
 
-var router *mux.Router
-
-func indexHandle(w http.ResponseWriter, r *http.Request) {
-}
-
-func trackHandle(w http.ResponseWriter, r *http.Request) {
+type Metrics struct {
+	bitmap *bitmap.Client
 }
 
 func sigTrapCloser(l net.Listener) {
@@ -31,14 +29,15 @@ func sigTrapCloser(l net.Listener) {
 	}()
 }
 
-func ListenAndServe(laddr string) error {
-	// HTTP endpoints
-	router = mux.NewRouter()
-	router.HandleFunc("/", indexHandle).Name("index")
-	router.HandleFunc("/track/{id}/", trackHandle).Methods("POST").Name("track")
-	router.StrictSlash(false)
-	http.Handle("/", router)
+func setupServer(redisUrl string) {
+	metrics = &Metrics{
+		bitmap.NewClient(redisUrl),
+	}
+	regMux()
+}
 
+func ListenAndServe(laddr, redisUrl string) error {
+	setupServer(redisUrl)
 	l, err := net.Listen("tcp", laddr)
 
 	if err != nil {
@@ -52,5 +51,3 @@ func ListenAndServe(laddr string) error {
 	Logf("Shutting down ..")
 	return err
 }
-
-

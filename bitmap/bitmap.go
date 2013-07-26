@@ -36,7 +36,7 @@ func NewClient(rawurl string) *Client {
 
 	db := u.Path
 
-	if len(db) > 1 && db[0] == '\\' {
+	if len(db) > 1 && db[0] == '/' {
 		db = db[1:len(db)]
 	}
 

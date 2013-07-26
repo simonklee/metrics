@@ -47,7 +47,6 @@ func main() {
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	server.LogLevel = *logLevel
-	//RedisUrl = *redisUrl
 
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
@@ -58,7 +57,7 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	err := server.ListenAndServe(*laddr)
+	err := server.ListenAndServe(*laddr, *redisUrl)
 
 	if err != nil {
 		log.Println(err)

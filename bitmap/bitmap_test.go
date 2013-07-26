@@ -27,6 +27,11 @@ type DayTest struct {
 	ok bool
 }
 
+func TestServerConf(t *testing.T) {
+	c := NewClient("redis://:@localhost:6379/15")
+	c.DeleteAllEvents()
+}
+
 func TestWithDifferentDays(t *testing.T) {
 	c := NewClient("")
 
