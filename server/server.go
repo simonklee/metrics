@@ -5,12 +5,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+
+	"github.com/gorilla/mux"
 	"github.com/simonz05/metrics/bitmap"
 )
 
 var (
 	Version = "0.0.1"
 	metrics *Metrics
+	router  *mux.Router
 )
 
 type Metrics struct {
@@ -33,7 +36,14 @@ func setupServer(redisUrl string) {
 	metrics = &Metrics{
 		bitmap.NewClient(redisUrl),
 	}
-	regMux()
+
+	// HTTP endpoints
+	//http.HandleFunc("/api/1.0/track/", trackHandle)
+	router = mux.NewRouter()
+	router.HandleFunc("/api/1.0/track/", trackHandle).Methods("POST").Name("track")
+	router.HandleFunc("/api/1.0/retention/", retentionHandle).Methods("GET").Name("retention")
+	router.StrictSlash(false)
+	http.Handle("/", router)
 }
 
 func ListenAndServe(laddr, redisUrl string) error {
