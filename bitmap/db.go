@@ -58,7 +58,7 @@ func parseDSN(dsn string) (*config, error) {
 	return cfg, nil
 }
 
-func Open(dataSourceName string) (*DB, error) {
+func Open(dataSourceName string) (Conn, error) {
 	var err error
 
 	db := new(DB)
