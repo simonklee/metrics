@@ -12,12 +12,13 @@ import (
 )
 
 var (
-	help       = flag.Bool("h", false, "this help")
-	laddr      = flag.String("a", ":8080", "bind address")
-	logLevel   = flag.Int("l", 0, "set logging level")
-	redisUrl   = flag.String("redis.url", "redis://:@localhost:6379/0", "Redis URL")
-	version    = flag.Bool("v", false, "show version and exit")
-	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+	verbose    = flag.Bool("v", false, "verbose mode")
+	help       = flag.Bool("h", false, "show help text")
+	laddr      = flag.String("http", ":8080", "set bind address for the HTTP server")
+	redisUrl   = flag.String("dsn", "redis://:@localhost:6379/0", "Redis Data Source Name")
+	logLevel   = flag.Int("log", 0, "set log level")
+	version    = flag.Bool("version", false, "show version number and exit")
+	cpuprofile = flag.String("debug.cpuprofile", "", "write cpu profile to file")
 )
 
 func usage() {
@@ -46,7 +47,12 @@ func main() {
 	}
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	server.LogLevel = *logLevel
+
+	if *verbose {
+		server.LogLevel = 2
+	} else {
+		server.LogLevel = *logLevel
+	}
 
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)

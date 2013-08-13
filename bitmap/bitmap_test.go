@@ -27,34 +27,39 @@ type DayTest struct {
 	ok bool
 }
 
+func getBitmap() *Bitmap {
+	c, _ := Open("redis://:@localhost:6379/15")
+	return NewBitmap(c)
+}
+
 func TestServerConf(t *testing.T) {
-	c := NewClient("redis://:@localhost:6379/15")
-	c.DeleteAllEvents()
+	b := getBitmap()
+	b.DeleteAllEvents()
 }
 
 func TestWithDifferentDays(t *testing.T) {
-	c := NewClient("")
+	b := getBitmap()
 
-	if err := c.DeleteAllEvents(); err != nil {
+	if err := b.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
 	}
 
-	if err := c.Track("active", 123); err != nil {
+	if err := b.Track("active", 123); err != nil {
 		t.Fatalf("track failed, got %v\n", err)
 	}
 
 	n := newTime(time.Now().UTC())
 
 	dayTests := []DayTest{
-		{c.MonthEvent("active", n.Year, n.Month), 123, true},
-		{c.MonthEvent("active", n.Year, n.Month-1), 123, false},
-		{c.WeekEvent("active", n.Year, n.Week), 123, true},
-		{c.WeekEvent("active", n.Year, n.Week-1), 123, false},
-		{c.DayEvent("active", n.Year, n.Month, n.Day), 123, true},
-		{c.DayEvent("active", n.Year, n.Month, n.Day-2), 123, false},
-		{c.HourEvent("active", n.Year, n.Month, n.Day, n.Hour), 123, true},
-		{c.HourEvent("active", n.Year, n.Month, n.Day, n.Hour-1), 123, false},
-		{c.HourEvent("active", n.Year, n.Month, n.Day, n.Hour), 124, false},
+		{b.MonthEvent("active", n.Year, n.Month), 123, true},
+		{b.MonthEvent("active", n.Year, n.Month-1), 123, false},
+		{b.WeekEvent("active", n.Year, n.Week), 123, true},
+		{b.WeekEvent("active", n.Year, n.Week-1), 123, false},
+		{b.DayEvent("active", n.Year, n.Month, n.Day), 123, true},
+		{b.DayEvent("active", n.Year, n.Month, n.Day-2), 123, false},
+		{b.HourEvent("active", n.Year, n.Month, n.Day, n.Hour), 123, true},
+		{b.HourEvent("active", n.Year, n.Month, n.Day, n.Hour-1), 123, false},
+		{b.HourEvent("active", n.Year, n.Month, n.Day, n.Hour), 124, false},
 	}
 
 	for _, test := range dayTests {
@@ -65,96 +70,96 @@ func TestWithDifferentDays(t *testing.T) {
 }
 
 func TestCounts(t *testing.T) {
-	c := NewClient("")
-	if err := c.DeleteAllEvents(); err != nil {
+	b := getBitmap()
+	if err := b.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
 	}
 
 	now := time.Now().UTC()
 
-	if cnt, err := c.MonthEventAtTime("active", now).Count(); cnt != 0 || err != nil {
+	if cnt, err := b.MonthEventAtTime("active", now).Count(); cnt != 0 || err != nil {
 		t.Fatalf("Expected count 0, got %d. Error(%v)", cnt, err)
 	}
 
-	c.Track("active", 123)
-	c.Track("active", 23232)
+	b.Track("active", 123)
+	b.Track("active", 23232)
 
-	if cnt, err := c.MonthEventAtTime("active", now).Count(); cnt != 2 || err != nil {
+	if cnt, err := b.MonthEventAtTime("active", now).Count(); cnt != 2 || err != nil {
 		t.Fatalf("Expected count 2, got %d. Error(%v)", cnt, err)
 	}
 }
 
 func TestDifferentDates(t *testing.T) {
-	c := NewClient("")
+	b := getBitmap()
 
-	if err := c.DeleteAllEvents(); err != nil {
+	if err := b.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
 	}
 
 	now := time.Now().UTC()
 	yesterday := now.AddDate(0, 0, now.Day()-1)
 
-	if err := c.TrackAtTime("active", 123, now); err != nil {
+	if err := b.TrackAtTime("active", 123, now); err != nil {
 		t.Fatalf("track failed, got %v\n", err)
 	}
 
-	if err := c.TrackAtTime("active", 123, yesterday); err != nil {
+	if err := b.TrackAtTime("active", 123, yesterday); err != nil {
 		t.Fatalf("track failed, got %v\n", err)
 	}
 
-	if cnt, err := c.DayEventAtTime("active", now).Count(); cnt != 1 || err != nil {
+	if cnt, err := b.DayEventAtTime("active", now).Count(); cnt != 1 || err != nil {
 		t.Fatalf("Expected count 1, got %d. Error(%v)", cnt, err)
 	}
 
-	if cnt, err := c.DayEventAtTime("active", yesterday).Count(); cnt != 1 || err != nil {
+	if cnt, err := b.DayEventAtTime("active", yesterday).Count(); cnt != 1 || err != nil {
 		t.Fatalf("Expected count 1, got %d. Error(%v)", cnt, err)
 	}
 }
 
 func TestDifferentBuckets(t *testing.T) {
-	c := NewClient("")
-	if err := c.DeleteAllEvents(); err != nil {
+	b := getBitmap()
+	if err := b.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
 	}
 
 	now := time.Now().UTC()
 
-	c.Track("active", 123)
-	c.Track("tasks:completed", 23232)
+	b.Track("active", 123)
+	b.Track("tasks:completed", 23232)
 
-	if cnt, err := c.MonthEventAtTime("active", now).Count(); cnt != 1 || err != nil {
+	if cnt, err := b.MonthEventAtTime("active", now).Count(); cnt != 1 || err != nil {
 		t.Fatalf("Expected count 1, got %d. Error(%v)", cnt, err)
 	}
 
-	if cnt, err := c.MonthEventAtTime("tasks:completed", now).Count(); cnt != 1 || err != nil {
+	if cnt, err := b.MonthEventAtTime("tasks:completed", now).Count(); cnt != 1 || err != nil {
 		t.Fatalf("Expected count 1, got %d. Error(%v)", cnt, err)
 	}
 }
 
 func TestExists(t *testing.T) {
-	c := NewClient("")
+	b := getBitmap()
 
-	if err := c.DeleteAllEvents(); err != nil {
+	if err := b.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
 	}
 
 	now := time.Now().UTC()
 
-	if cnt, err := c.MonthEventAtTime("active", now).Count(); cnt != 0 || err != nil {
+	if cnt, err := b.MonthEventAtTime("active", now).Count(); cnt != 0 || err != nil {
 		t.Fatalf("Expected count 0, got %d. Error(%v)", cnt, err)
 	}
 
-	if ok, err := c.MonthEventAtTime("active", now).Exists(); ok != false || err != nil {
+	if ok, err := b.MonthEventAtTime("active", now).Exists(); ok != false || err != nil {
 		t.Fatalf("Expected false, got %v. Error(%v)", ok, err)
 	}
 
-	c.TrackAtTime("active", 123, now)
+	b.TrackAtTime("active", 123, now)
 
-	if cnt, err := c.MonthEventAtTime("active", now).Count(); cnt != 1 || err != nil {
+	if cnt, err := b.MonthEventAtTime("active", now).Count(); cnt != 1 || err != nil {
 		t.Fatalf("Expected count 1, got %d. Error(%v)", cnt, err)
 	}
 
-	if ok, err := c.MonthEventAtTime("active", now).Exists(); ok != true || err != nil {
+	if ok, err := b.MonthEventAtTime("active", now).Exists(); ok != true || err != nil {
 		t.Fatalf("Expected count 1, got %v. Error(%v)", ok, err)
 	}
 }
@@ -169,8 +174,8 @@ type OpTest struct {
 }
 
 func TestOp(t *testing.T) {
-	c := NewClient("")
-	if err := c.DeleteAllEvents(); err != nil {
+	b := getBitmap()
+	if err := b.DeleteAllEvents(); err != nil {
 		t.Fatalf("DeleteAllEvents failed, got %v\n", err)
 	}
 
@@ -178,17 +183,17 @@ func TestOp(t *testing.T) {
 	monthAgo := now.AddDate(0, int(now.Month())-1, 0)
 
 	// 123 has been active for two months
-	c.TrackAtTime("active", 123, now)
-	c.TrackAtTime("active", 123, monthAgo)
+	b.TrackAtTime("active", 123, now)
+	b.TrackAtTime("active", 123, monthAgo)
 
 	// 124 has only been active last month
-	c.TrackAtTime("active", 124, monthAgo)
+	b.TrackAtTime("active", 124, monthAgo)
 
-	if cnt, err := c.MonthEventAtTime("active", now).Count(); cnt != 1 || err != nil {
+	if cnt, err := b.MonthEventAtTime("active", now).Count(); cnt != 1 || err != nil {
 		t.Fatalf("Expected count 1, got %d. Error(%v)", cnt, err)
 	}
 
-	if cnt, err := c.MonthEventAtTime("active", monthAgo).Count(); cnt != 2 || err != nil {
+	if cnt, err := b.MonthEventAtTime("active", monthAgo).Count(); cnt != 2 || err != nil {
 		t.Fatalf("Expected count 2, got %d. Error(%v)", cnt, err)
 	}
 
@@ -197,8 +202,8 @@ func TestOp(t *testing.T) {
 			name: "bitop AND #1",
 			op:   "AND",
 			numerals: []Numeral{
-				c.MonthEventAtTime("active", monthAgo),
-				c.MonthEventAtTime("active", now),
+				b.MonthEventAtTime("active", monthAgo),
+				b.MonthEventAtTime("active", now),
 			},
 			count:  1,
 			ids:    []int{123},
@@ -208,7 +213,7 @@ func TestOp(t *testing.T) {
 			name: "bitop AND #2",
 			op:   "AND",
 			numerals: []Numeral{
-				c.MonthEventAtTime("active", monthAgo),
+				b.MonthEventAtTime("active", monthAgo),
 			},
 			count: 2,
 			ids:   []int{123, 124},
@@ -217,9 +222,9 @@ func TestOp(t *testing.T) {
 			name: "bitop nested AND #3",
 			op:   "AND",
 			numerals: []Numeral{
-				AND(c.MonthEventAtTime("active", monthAgo),
-					c.MonthEventAtTime("active", now)),
-				c.MonthEventAtTime("active", now),
+				AND(b.MonthEventAtTime("active", monthAgo),
+					b.MonthEventAtTime("active", now)),
+				b.MonthEventAtTime("active", now),
 			},
 			count:  1,
 			ids:    []int{123},
@@ -229,8 +234,8 @@ func TestOp(t *testing.T) {
 			name: "bitop OR #1",
 			op:   "OR",
 			numerals: []Numeral{
-				c.MonthEventAtTime("active", monthAgo),
-				c.MonthEventAtTime("active", now),
+				b.MonthEventAtTime("active", monthAgo),
+				b.MonthEventAtTime("active", now),
 			},
 			count:  2,
 			ids:    []int{123, 124},
@@ -240,8 +245,8 @@ func TestOp(t *testing.T) {
 			name: "bitop XOR #1",
 			op:   "XOR",
 			numerals: []Numeral{
-				c.MonthEventAtTime("active", monthAgo),
-				c.MonthEventAtTime("active", now),
+				b.MonthEventAtTime("active", monthAgo),
+				b.MonthEventAtTime("active", now),
 			},
 			count:  1,
 			ids:    []int{124},
