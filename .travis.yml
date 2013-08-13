@@ -1,7 +1,5 @@
 language: go
 go: 1.1
 
-install: make get-deps
-
 services:
   - redis-server
