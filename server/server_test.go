@@ -27,7 +27,8 @@ func startServer() {
 }
 
 func emptyDb() {
-	bitmap.NewClient(redisUrl).DeleteAllEvents()
+	c, _ := bitmap.Open(redisUrl)
+	bitmap.NewBitmap(c).DeleteAllEvents()
 }
 
 func TestTrack(t *testing.T) {

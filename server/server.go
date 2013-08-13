@@ -17,7 +17,7 @@ var (
 )
 
 type Metrics struct {
-	bitmap *bitmap.Client
+	bitmap *bitmap.Bitmap
 }
 
 func sigTrapCloser(l net.Listener) {
@@ -33,8 +33,9 @@ func sigTrapCloser(l net.Listener) {
 }
 
 func setupServer(redisUrl string) {
+	conn, _ := bitmap.Open(redisUrl)
 	metrics = &Metrics{
-		bitmap.NewClient(redisUrl),
+		bitmap.NewBitmap(conn),
 	}
 
 	// HTTP endpoints
