@@ -73,6 +73,6 @@ func TestRetention(t *testing.T) {
 	log.Printf("res: %s", body)
 
 	if r.StatusCode != 200 {
-		t.Fatalf("expected status code 201, got %d", r.StatusCode)
+		t.Fatalf("expected status code 200, got %d", r.StatusCode)
 	}
 }

@@ -38,7 +38,7 @@ func retentionHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	const dateFmt = "2013-11-01"
+	const dateFmt = "2006-01-02"
 
 	fromDate, err := time.Parse(dateFmt, r.FormValue("from_date"))
 
